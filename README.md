@@ -319,7 +319,7 @@ name: spring-server-{name}
 director_uuid: {director uuid}
 
 releases:
-- name: spring-music-release
+- name: spring-music-release-{name}
   version: latest
 
 stemcells:
@@ -339,7 +339,7 @@ instance_groups:
   azs: [z1]
   jobs:
   - name: server
-    release: spring-music-release
+    release: spring-music-release-{name}
   vm_type: t2.small
   vm_extensions: [5GB_ephemeral_disk]
   stemcell: ubuntu
@@ -348,7 +348,8 @@ instance_groups:
   properties:
     name: ERGINNN
 ```
-
+**director_uuid** uuid of a director. Needs to be specified so you don't accidentally deploy to the wrong bosh director.
+**name** name of this deployment. Make it unique
 **releases** Releases that will be used by this deployment
 **stemcell** Version of the stemcell bosh should use. Can use ` bosh stemcells` to see possible values
 
@@ -356,3 +357,14 @@ instance_groups:
 **instance groups** How the jobs should be deployed. An instance group specifies what jobs should run, the vm type, network type and additional properties for those jobs. 
 
 You can get the vm types and network types by running `bosh cloud-config`. In this case we're using a t2.small size vm, with a 5GB disk attached to it.
+
+Target the manifest
+
+```
+bosh deployment manifest.yml
+```
+
+Deploy
+```
+bosh deploy
+```
