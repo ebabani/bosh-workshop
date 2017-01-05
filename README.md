@@ -119,3 +119,53 @@ Similar to the packaging script, but the command will be run locally instead of 
 
 After this step, we should have an openjdk package set up.
 
+# 5. Create the spring music package
+Similar to the openjdk package. The output of this package should be the compiled spring-music that other jobs or packages can include.
+
+```
+bosh generate package spring-music
+```
+
+Created package skeleton
+```
+packages/spring-music/
+├── packaging
+├── pre_packaging
+└── spec
+```
+
+**spec**
+We're going to be building the spring-music project during the packaging script, so we need openjdk in order to build java.
+Add openjdk under dependencies, and spring-music under files.
+```
+---
+name: spring-music
+
+dependencies:
+- openjdk
+
+files:
+- spring-music/**/*
+```
+
+**packaging**
+We'll build the spring-music app, then copy the jar into $BOSH_INSTALL_TARGET
+
+Since we depend on openjdk, it will be present under /var/vcap/packages/openjdk on the compilation VM.
+
+```
+# abort script on any command that exits with a non zero value
+set -ex
+
+cd spring-music
+export JAVA_HOME=/var/vcap/packages/openjdk
+./gradlew assemble
+
+cp build/libs/spring-music.jar $BOSH_INSTALL_TARGET
+```
+
+**pre_packaging**
+Nothing
+
+This should be all we need for the spring-musci package.
+
