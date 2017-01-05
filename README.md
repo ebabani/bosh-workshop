@@ -169,3 +169,148 @@ Nothing
 
 This should be all we need for the spring-musci package.
 
+# 6. Create the server job
+A bosh job is a long running process that bosh will monitor. 
+A job consists of a start and stop script, and a spec file specifying its nama, package dependencies and additional properties for that job.
+BOSH will create a VM and start the job on in. It will monitor the process and restart it if it fails, or restart the VM if it crashes. 
+
+A job can depend on packages, but not other jobs.
+
+The server job for spring music will depend on the spring-music package, and the openjdk package.
+We need the jar from spring-music, and openjdk in order to run jar files.
+
+On the VM, the job's files will be under /var/vcap/jobs/{job name}
+
+Generate the job skeleton
+```
+bosh generate job server
+```
+```
+jobs/server/
+├── monit
+├── spec
+└── templates
+```
+
+**spec**
+```
+---
+name: server
+templates:
+
+packages:
+```
+- **packages** Similar to the package spec. List of packages the job depends on. The server will depend on the spring-music and openjdk. 
+
+- **templates** One or more files used to start the job. Need to have a monit script bor BOSh to start/stop the job. For our server job it'll be a control script, described later.
+- **properties** you can also specify a properties block for any properties you might want to pass to your job.
+
+Update the job spec to fill in those sectons:
+```
+---
+name: server
+templates:
+  ctl.erb: bin/ctl
+
+packages:
+- spring-music
+- openjdk
+
+properties:
+  name:
+    description: "User name"
+    default: "User"
+```
+We set our dependencies, a property "name" with a default name.
+The templates section specifies that there will be a file called ctl.erb under the `jobs/server/templates` folder, and on the VM it will be available under `/var/vcap/jobs/server/bin/ctl`
+
+**monit** This file will contain a monit script for how to start and stop the server. 
+```
+check process server
+  with pidfile /var/vcap/sys/run/server/pid
+  start program "/var/vcap/jobs/server/bin/ctl start"
+  stop program "/var/vcap/jobs/server/bin/ctl stop"
+  group vcap
+``` 
+
+**template** Last thing we need to do is add a template to tell BOSH how to start/stop the job. 
+Create the `jobs/server/templates/ctl.erb` file. It will be very similar to a bash script that takes in a start/stop command
+```
+#!/bin/bash
+
+RUN_DIR=/var/vcap/sys/run/server
+LOG_DIR=/var/vcap/sys/log/server
+PIDFILE=${RUN_DIR}/pid
+
+case $1 in
+
+  start)
+    set -ex
+    mkdir -p $RUN_DIR $LOG_DIR
+
+    chown -R vcap:vcap $RUN_DIR $LOG_DIR
+
+    echo $$ > $PIDFILE
+
+    cd /var/vcap/jobs/server
+
+    exec /var/vcap/packages/openjdk/bin/java -jar ./packages/spring-music/spring-music.jar \
+      --name="<%= p("name") %>" \
+      >>  $LOG_DIR/server.stdout.log \
+      2>> $LOG_DIR/server.stderr.log
+
+    ;;
+
+  stop)
+    kill -9 `cat $PIDFILE`
+    rm -f $PIDFILE
+
+    ;;
+
+  *)
+    echo "Usage: ctl {start|stop}" ;;
+
+esac
+```
+
+Script taken from the bosh docs. When called with `start` the script will execute a process and save the process id in a file. When called with `stop` the script will kill the process with that id.
+
+The interesting part is the `exec /var/vcap/packages/openjdk/bin/java -jar  ./packages/spring-music/spring-music.jar` line, which tells the script how to start our job.
+
+Notice that this is not quite a bash script, but is a template. BOSH will do a pass on this template, and replace any placeholders with actual values. 
+In the line `--name="<%= p("name") %>"` BOSH will look for a property called "name", and replace it with its actual value.
+
+After adding the ctl script we should be done with setting up the job.
+
+BREAK POINT
+
+# 7. Create the release
+
+We should have all we need to create the spring-music release. Create a dev release by running
+```
+bosh create release --force
+```
+
+Release name: spring-music-release-{name}
+
+# 8. Upload the release
+
+Connect to the bosh director set up for the workshop with the username and password
+```
+bosh target <ip>
+```
+
+```
+bosh upload release
+```
+
+This will upload the release to the bosh director, and run the packaging scripts.
+
+# 9. Run your spring music job
+
+To run a bosh release you need to provide a deployment manifest. This is a yml file that tells BOSH what jobs you want to run, what kind of VM you want to have running that job, how many vms and any properties that should be passed to the job. 
+
+Sample manifest:
+```
+
+```
