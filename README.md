@@ -310,7 +310,49 @@ This will upload the release to the bosh director, and run the packaging scripts
 
 To run a bosh release you need to provide a deployment manifest. This is a yml file that tells BOSH what jobs you want to run, what kind of VM you want to have running that job, how many vms and any properties that should be passed to the job. 
 
+A deployment can refer to one or multiple releases.
+
 Sample manifest:
 ```
+---
+name: spring-server-{name}
+director_uuid: {director uuid}
 
+releases:
+- name: spring-music-release
+  version: latest
+
+stemcells:
+- alias: ubuntu
+  os: ubuntu-trusty
+  version: latest
+
+update:
+  canaries: 0
+  max_in_flight: 1
+  canary_watch_time: 1000-30000
+  update_watch_time: 1000-30000
+
+instance_groups:
+- name: server
+  instances: 1
+  azs: [z1]
+  jobs:
+  - name: server
+    release: spring-music-release
+  vm_type: t2.small
+  vm_extensions: [5GB_ephemeral_disk]
+  stemcell: ubuntu
+  networks:
+  - name: private
+  properties:
+    name: ERGINNN
 ```
+
+**releases** Releases that will be used by this deployment
+**stemcell** Version of the stemcell bosh should use. Can use ` bosh stemcells` to see possible values
+
+**update** Update behaviour for the job.
+**instance groups** How the jobs should be deployed. An instance group specifies what jobs should run, the vm type, network type and additional properties for those jobs. 
+
+You can get the vm types and network types by running `bosh cloud-config`. In this case we're using a t2.small size vm, with a 5GB disk attached to it.
