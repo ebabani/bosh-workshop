@@ -349,8 +349,11 @@ instance_groups:
     name: ERGINNN
 ```
 **director_uuid** uuid of a director. Needs to be specified so you don't accidentally deploy to the wrong bosh director. Get the director uuid by running `bosh status --uuid`
+
 **name** name of this deployment. Make it unique
+
 **releases** Releases that will be used by this deployment
+
 **stemcell** Version of the stemcell bosh should use. Can use ` bosh stemcells` to see possible values
 
 **update** Update behaviour for the job.
